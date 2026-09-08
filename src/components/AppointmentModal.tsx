@@ -1,220 +1,126 @@
-import React, { useState } from 'react';
-import { X, CheckCircle2, Phone, Calendar, User, MessageSquare } from 'lucide-react';
-import { CLINIC_INFO, ALL_SERVICES, DOCTORS } from '../data/clinicData';
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { CheckCircle2, CircleAlert, MessageCircle, Phone, Send, X } from 'lucide-react';
+import type { AppointmentResponse } from '../types';
+import type { AppointmentSelection } from '../context/AppointmentContext';
+import { CLINIC_INFO, DOCTORS, SERVICES } from '../data/clinicData';
+
+type Status = 'idle' | 'sending' | 'success' | 'error';
+const EMPTY_FORM = { name: '', phone: '', service: '', doctor: '', comment: '', consent: false, website: '' };
 
 interface AppointmentModalProps {
-  isOpen: boolean;
+  selection: AppointmentSelection | null;
   onClose: () => void;
-  preselectedService?: string;
-  preselectedDoctor?: string;
 }
 
-export const AppointmentModal: React.FC<AppointmentModalProps> = ({
-  isOpen,
-  onClose,
-  preselectedService = '',
-  preselectedDoctor = '',
-}) => {
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [service, setService] = useState(preselectedService);
-  const [doctor, setDoctor] = useState(preselectedDoctor);
-  const [comment, setComment] = useState('');
-  const [isSubmitted, setIsSubmitted] = useState(false);
+export function AppointmentModal({ selection, onClose }: AppointmentModalProps) {
+  const titleId = useId();
+  const closeButton = useRef<HTMLButtonElement>(null);
+  const dialog = useRef<HTMLElement>(null);
+  const [status, setStatus] = useState<Status>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [form, setForm] = useState(EMPTY_FORM);
 
-  if (!isOpen) return null;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !phone.trim()) return;
-    setIsSubmitted(true);
-  };
-
-  const openWhatsApp = () => {
-    const text = encodeURIComponent(
-      `Здравствуйте! Я хочу записаться в клинику DENTA.\nИмя: ${
-        name || 'Не указано'
-      }\nТелефон: ${phone || 'Не указано'}\nУслуга: ${
-        service || 'Консультация'
-      }${doctor ? `\nВрач: ${doctor}` : ''}${
-        comment ? `\nКомментарий: ${comment}` : ''
-      }`
-    );
-    window.open(`https://wa.me/${CLINIC_INFO.whatsappPhone}?text=${text}`, '_blank');
-  };
-
-  const handleReset = () => {
-    setIsSubmitted(false);
-    setName('');
-    setPhone('');
-    setService('');
-    setDoctor('');
-    setComment('');
+  const closeModal = useCallback(() => {
+    setForm(EMPTY_FORM);
+    setStatus('idle');
+    setErrorMessage('');
     onClose();
-  };
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!selection) return;
+    setStatus('idle');
+    setErrorMessage('');
+    setForm((current) => ({ ...current, service: selection.service ?? '', doctor: selection.doctor ?? '' }));
+    requestAnimationFrame(() => closeButton.current?.focus());
+  }, [selection]);
+
+  useEffect(() => {
+    if (!selection) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeModal();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = dialog.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [selection, closeModal]);
+
+  if (!selection) return null;
+
+  const whatsappUrl = `https://wa.me/${CLINIC_INFO.whatsappPhone}?text=${encodeURIComponent(
+    `Здравствуйте! Хочу записаться в Perfect Dental.\nИмя: ${form.name || 'не указано'}\nТелефон: ${form.phone || 'не указан'}\nУслуга: ${form.service || 'консультация'}${form.comment ? `\nКомментарий: ${form.comment}` : ''}`,
+  )}`;
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!form.name.trim() || !form.phone.trim() || !form.consent) {
+      setErrorMessage('Заполните имя, телефон и подтвердите согласие на обработку данных.');
+      setStatus('error');
+      return;
+    }
+    setStatus('sending');
+    setErrorMessage('');
+    try {
+      const endpoint = import.meta.env.VITE_APPOINTMENT_API_URL || '/api/appointments.php';
+      const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+      const result = (await response.json()) as AppointmentResponse;
+      if ('code' in result) throw new Error(result.code);
+      if (!response.ok || !result.ok) throw new Error('DELIVERY_ERROR');
+      setStatus('success');
+    } catch (error) {
+      const code = error instanceof Error ? error.message : '';
+      setErrorMessage(code === 'RATE_LIMIT' ? 'Заявка уже отправлялась недавно. Позвоните нам или напишите в WhatsApp.' : 'Не удалось отправить заявку. Свяжитесь с нами по телефону или в WhatsApp.');
+      setStatus('error');
+    }
+  }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-      <div className="relative w-full max-w-lg bg-surface border border-outline-variant rounded-2xl shadow-2xl p-6 md:p-8 overflow-hidden max-h-[90vh] overflow-y-auto">
-        {/* Close button */}
-        <button
-          onClick={handleReset}
-          className="absolute top-4 right-4 p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container transition-colors"
-          aria-label="Закрыть"
-        >
-          <X className="w-6 h-6" />
-        </button>
-
-        {isSubmitted ? (
-          <div className="text-center py-8">
-            <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 text-primary rounded-full flex items-center justify-center">
-              <CheckCircle2 className="w-10 h-10" />
-            </div>
-            <h3 className="text-2xl font-bold text-on-surface mb-2">Заявка принята!</h3>
-            <p className="text-on-surface-variant mb-6 text-sm">
-              Наш администратор свяжется с вами в течение 10 минут для подтверждения времени приема.
-            </p>
-            <div className="space-y-3">
-              <button
-                onClick={openWhatsApp}
-                className="w-full flex items-center justify-center gap-2 bg-[#25D366] text-white font-medium px-6 py-3 rounded-xl hover:opacity-90 transition-opacity shadow-md"
-              >
-                <MessageSquare className="w-5 h-5" />
-                Ускорить запись через WhatsApp
-              </button>
-              <button
-                onClick={handleReset}
-                className="w-full border border-outline text-on-surface font-medium px-6 py-3 rounded-xl hover:bg-surface-container transition-colors"
-              >
-                Закрыть окно
-              </button>
-            </div>
+    <div role="presentation" onMouseDown={(event) => event.target === event.currentTarget && closeModal()} className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-[#071e20]/70 p-4 backdrop-blur-sm">
+      <section ref={dialog} role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative my-6 w-full max-w-xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="bg-primary px-6 py-6 pr-16 text-white md:px-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-fixed">Perfect Dental</p>
+          <h2 id={titleId} className="mt-1 text-2xl font-bold">Запись на консультацию</h2>
+          <p className="mt-2 text-sm text-white/75">Администратор свяжется с вами, чтобы подобрать удобное время.</p>
+        </div>
+        <button ref={closeButton} type="button" onClick={closeModal} aria-label="Закрыть форму" className="absolute right-4 top-4 rounded-full p-2 text-white hover:bg-white/15"><X /></button>
+        {status === 'success' ? (
+          <div className="px-6 py-12 text-center md:px-8">
+            <CheckCircle2 className="mx-auto size-14 text-primary" />
+            <h3 className="mt-5 text-2xl font-bold">Заявка отправлена</h3>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-on-surface-variant">Спасибо! Администратор Perfect Dental свяжется с вами по указанному номеру.</p>
+            <button type="button" onClick={closeModal} className="mt-6 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white">Закрыть</button>
           </div>
         ) : (
-          <div>
-            <div className="mb-6">
-              <span className="text-xs font-semibold uppercase tracking-widest text-primary">
-                DENTA Clinic
-              </span>
-              <h2 className="text-2xl font-bold text-on-surface mt-1">Запись на приём</h2>
-              <p className="text-sm text-on-surface-variant mt-1">
-                Заполните форму или свяжитесь с нами сразу в WhatsApp
-              </p>
+          <form onSubmit={handleSubmit} className="space-y-4 px-6 py-6 md:px-8" noValidate>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="text-sm font-semibold">Имя *<input required maxLength={80} autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="form-field mt-1.5" placeholder="Как к вам обращаться" /></label>
+              <label className="text-sm font-semibold">Телефон *<input required maxLength={30} autoComplete="tel" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="form-field mt-1.5" placeholder="+7 777 000 00 00" /></label>
             </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                  Ваше имя *
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Иван Иванов"
-                    className="w-full pl-10 pr-4 py-2.5 bg-surface-container-low border border-outline-variant rounded-xl text-sm focus:outline-none focus:border-primary text-on-surface"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                  Номер телефона *
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
-                  <input
-                    type="tel"
-                    required
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+7 (777) 000-00-00"
-                    className="w-full pl-10 pr-4 py-2.5 bg-surface-container-low border border-outline-variant rounded-xl text-sm focus:outline-none focus:border-primary text-on-surface"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                  Выберите услугу
-                </label>
-                <select
-                  value={service}
-                  onChange={(e) => setService(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-surface-container-low border border-outline-variant rounded-xl text-sm focus:outline-none focus:border-primary text-on-surface"
-                >
-                  <option value="">-- Первичная консультация --</option>
-                  {ALL_SERVICES.map((s) => (
-                    <option key={s.id} value={s.title}>
-                      {s.title} ({s.priceFrom})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                  Выберите врача (необязательно)
-                </label>
-                <select
-                  value={doctor}
-                  onChange={(e) => setDoctor(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-surface-container-low border border-outline-variant rounded-xl text-sm focus:outline-none focus:border-primary text-on-surface"
-                >
-                  <option value="">-- Любой свободный специалист --</option>
-                  {DOCTORS.map((d) => (
-                    <option key={d.id} value={d.name}>
-                      {d.name} ({d.specialty})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                  Комментарий или симптомы
-                </label>
-                <textarea
-                  rows={2}
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Опишите, что вас беспокоит..."
-                  className="w-full px-4 py-2 bg-surface-container-low border border-outline-variant rounded-xl text-sm focus:outline-none focus:border-primary text-on-surface resize-none"
-                />
-              </div>
-
-              <div className="pt-2 space-y-3">
-                <button
-                  type="submit"
-                  className="w-full bg-primary text-on-primary font-medium py-3 rounded-xl hover:bg-primary-container transition-colors shadow-md text-sm uppercase tracking-wider"
-                >
-                  Отправить заявку
-                </button>
-
-                <div className="relative flex py-1 items-center">
-                  <div className="flex-grow border-t border-outline-variant"></div>
-                  <span className="flex-shrink mx-3 text-xs text-on-surface-variant uppercase">
-                    или
-                  </span>
-                  <div className="flex-grow border-t border-outline-variant"></div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={openWhatsApp}
-                  className="w-full flex items-center justify-center gap-2 border border-[#25D366] text-[#25D366] font-medium py-2.5 rounded-xl hover:bg-[#25D366]/10 transition-colors text-sm"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  Быстрая запись в WhatsApp
-                </button>
-              </div>
-            </form>
-          </div>
+            <label className="block text-sm font-semibold">Услуга<select value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} className="form-field mt-1.5"><option value="">Первичная консультация</option>{SERVICES.map((service) => <option key={service.id} value={service.title}>{service.title}</option>)}</select></label>
+            <label className="block text-sm font-semibold">Направление специалиста<select value={form.doctor} onChange={(e) => setForm({ ...form, doctor: e.target.value })} className="form-field mt-1.5"><option value="">Подберёт администратор</option>{DOCTORS.map((doctor) => <option key={doctor.id} value={doctor.specialty}>{doctor.specialty}</option>)}</select></label>
+            <label className="block text-sm font-semibold">Комментарий<textarea maxLength={500} rows={3} value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} className="form-field mt-1.5 resize-none" placeholder="Кратко опишите вопрос" /></label>
+            <label className="sr-only" aria-hidden="true">Не заполняйте это поле<input tabIndex={-1} autoComplete="off" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} /></label>
+            <label className="flex items-start gap-3 text-xs leading-5 text-on-surface-variant"><input required type="checkbox" checked={form.consent} onChange={(e) => setForm({ ...form, consent: e.target.checked })} className="mt-1 size-4 accent-primary" /><span>Я согласен(на) на обработку персональных данных согласно <a href="/privacy" target="_blank" className="underline">политике конфиденциальности</a>.</span></label>
+            {status === 'error' && <div role="alert" className="flex gap-3 rounded-xl bg-red-50 p-3 text-sm text-red-800"><CircleAlert className="size-5 shrink-0" />{errorMessage}</div>}
+            <button disabled={status === 'sending'} type="submit" className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60"><Send className="size-4" />{status === 'sending' ? 'Отправляем…' : 'Отправить заявку'}</button>
+            {status === 'error' && <div className="grid gap-2 sm:grid-cols-2"><a href={`tel:${CLINIC_INFO.phoneHref}`} className="flex items-center justify-center gap-2 rounded-xl border border-outline-variant px-4 py-3 text-sm font-semibold"><Phone className="size-4" />Позвонить</a><a href={whatsappUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-sm font-semibold text-white"><MessageCircle className="size-4" />WhatsApp</a></div>}
+          </form>
         )}
-      </div>
+      </section>
     </div>
   );
-};
+}

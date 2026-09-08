@@ -1,157 +1,60 @@
-import React, { useState } from 'react';
-import { PageId } from '../types';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, useLocation } from 'react-router';
+import { CalendarDays, Menu, MessageCircle, Phone, X } from 'lucide-react';
 import { CLINIC_INFO } from '../data/clinicData';
-import { Menu, X, Phone, MessageSquare } from 'lucide-react';
+import { useAppointment } from '../context/AppointmentContext';
 
-interface HeaderProps {
-  currentPage: PageId;
-  onNavigate: (page: PageId) => void;
-  onOpenAppointment: () => void;
-}
+const navLinks = [
+  { to: '/services', label: 'Услуги' },
+  { to: '/doctors', label: 'Врачи' },
+  { to: '/equipment', label: 'Оборудование' },
+  { to: '/results', label: 'Работы' },
+  { to: '/reviews', label: 'Отзывы' },
+  { to: '/contacts', label: 'Контакты' },
+];
 
-export const Header: React.FC<HeaderProps> = ({
-  currentPage,
-  onNavigate,
-  onOpenAppointment,
-}) => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+export function Header() {
+  const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  const { openAppointment } = useAppointment();
 
-  const navLinks: { id: PageId; label: string }[] = [
-    { id: 'services', label: 'Услуги' },
-    { id: 'all-services', label: 'Каталог' },
-    { id: 'doctors', label: 'Врачи' },
-    { id: 'price', label: 'Прайс' },
-    { id: 'before-after', label: 'До/После' },
-    { id: 'reviews', label: 'Отзывы' },
-    { id: 'certificates', label: 'Сертификаты' },
-    { id: 'promotions', label: 'Акции' },
-    { id: 'contacts', label: 'Контакты' },
-  ];
-
-  const handleNavClick = (id: PageId) => {
-    onNavigate(id);
-    setIsMobileMenuOpen(false);
-  };
-
-  const openWhatsApp = () => {
-    window.open(`https://wa.me/${CLINIC_INFO.whatsappPhone}`, '_blank');
-  };
+  useEffect(() => setOpen(false), [pathname]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-md border-b border-outline-variant/30">
-      <div className="max-w-container-max mx-auto px-gutter h-20 flex justify-between items-center">
-        {/* Brand */}
-        <button
-          onClick={() => handleNavClick('home')}
-          className="text-2xl md:text-3xl font-bold tracking-tighter text-primary dark:text-primary-fixed hover:opacity-90 transition-opacity flex items-center gap-2"
-        >
-          <span>DENTA</span>
-        </button>
-
-        {/* Desktop Nav Links */}
-        <nav className="hidden lg:flex items-center gap-6 text-sm font-medium uppercase tracking-wider">
-          {navLinks.map((link) => {
-            const isActive = currentPage === link.id;
-            return (
-              <button
-                key={link.id}
-                onClick={() => handleNavClick(link.id)}
-                className={`transition-colors py-1 cursor-pointer ${
-                  isActive
-                    ? 'text-primary font-bold border-b-2 border-primary'
-                    : 'text-on-surface-variant hover:text-primary'
-                }`}
-              >
-                {link.label}
-              </button>
-            );
-          })}
+    <header className="sticky top-0 z-50 border-b border-outline-variant/40 bg-surface/95 backdrop-blur-xl">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-white focus:p-3">
+        Перейти к содержанию
+      </a>
+      <div className="mx-auto flex h-20 max-w-[1280px] items-center justify-between gap-5 px-5 md:px-6">
+        <Link to="/" aria-label="Perfect Dental — главная" className="shrink-0">
+          <img src="/images/brand/perfect-dental-logo.png" alt="Perfect Dental" className="h-14 w-auto object-contain" />
+        </Link>
+        <nav aria-label="Основная навигация" className="hidden items-center gap-5 lg:flex">
+          {navLinks.map((link) => (
+            <NavLink key={link.to} to={link.to} className={({ isActive }) => `border-b-2 py-2 text-sm font-medium transition-colors ${isActive ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-primary'}`}>
+              {link.label}
+            </NavLink>
+          ))}
         </nav>
-
-        {/* Header Actions */}
-        <div className="flex items-center gap-3">
-          <a
-            href={`tel:${CLINIC_INFO.phones[0]}`}
-            className="hidden xl:flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
-          >
-            <Phone className="w-3.5 h-3.5" />
-            {CLINIC_INFO.phones[0]}
-          </a>
-
-          <button
-            onClick={openWhatsApp}
-            className="hidden sm:flex items-center gap-1.5 bg-surface-container-lowest border border-[#25D366] text-[#25D366] px-4 py-2 rounded-lg text-xs font-semibold hover:bg-[#25D366] hover:text-white transition-colors cursor-pointer"
-          >
-            <MessageSquare className="w-4 h-4 fill-current" />
-            <span className="hidden md:inline">Записаться в WhatsApp</span>
-            <span className="md:hidden">WhatsApp</span>
-          </button>
-
-          <button
-            onClick={onOpenAppointment}
-            className="hidden md:block bg-primary text-on-primary px-5 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-primary-container transition-colors cursor-pointer active:scale-95"
-          >
-            Записаться
-          </button>
-
-          {/* Mobile Menu Toggle */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden p-2 text-primary hover:bg-surface-container rounded-lg"
-            aria-label="Переключить меню"
-          >
-            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        <div className="flex items-center gap-2">
+          <a href={`tel:${CLINIC_INFO.phoneHref}`} className="hidden items-center gap-2 text-sm font-semibold text-primary xl:flex"><Phone className="size-4" aria-hidden="true" />{CLINIC_INFO.phone}</a>
+          <button type="button" onClick={() => openAppointment()} className="hidden rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white transition hover:bg-primary-container md:inline-flex">Записаться</button>
+          <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-controls="mobile-menu" aria-label={open ? 'Закрыть меню' : 'Открыть меню'} className="rounded-xl p-2.5 text-primary hover:bg-surface-container lg:hidden">
+            {open ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
           </button>
         </div>
       </div>
-
-      {/* Mobile Slideout Navigation */}
-      {isMobileMenuOpen && (
-        <div className="lg:hidden bg-surface border-b border-outline-variant/30 px-6 py-6 space-y-4 animate-fadeIn shadow-xl max-h-[80vh] overflow-y-auto">
-          <div className="grid grid-cols-2 gap-2 pb-4 border-b border-outline-variant/30">
-            {navLinks.map((link) => {
-              const isActive = currentPage === link.id;
-              return (
-                <button
-                  key={link.id}
-                  onClick={() => handleNavClick(link.id)}
-                  className={`text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-primary/10 text-primary font-bold'
-                      : 'text-on-surface-variant hover:bg-surface-container'
-                  }`}
-                >
-                  {link.label}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="pt-2 space-y-3">
-            <div className="text-xs text-on-surface-variant">
-              <p className="font-semibold text-on-surface mb-1">Контакты клиники:</p>
-              <p>{CLINIC_INFO.address}</p>
-              <p className="font-medium text-primary mt-1">{CLINIC_INFO.phones[0]}</p>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={onOpenAppointment}
-                className="flex-1 bg-primary text-on-primary py-2.5 rounded-lg text-xs font-semibold uppercase text-center"
-              >
-                Записаться на прием
-              </button>
-              <button
-                onClick={openWhatsApp}
-                className="bg-[#25D366] text-white p-2.5 rounded-lg flex items-center justify-center"
-                aria-label="WhatsApp"
-              >
-                <MessageSquare className="w-5 h-5 fill-current" />
-              </button>
-            </div>
+      {open && (
+        <div id="mobile-menu" className="border-t border-outline-variant/40 bg-surface px-5 py-5 shadow-xl lg:hidden">
+          <nav aria-label="Мобильная навигация" className="mx-auto grid max-w-[1280px] grid-cols-2 gap-2">
+            {navLinks.map((link) => <NavLink key={link.to} to={link.to} className="rounded-xl bg-surface-container-low px-4 py-3 text-sm font-medium text-on-surface">{link.label}</NavLink>)}
+          </nav>
+          <div className="mx-auto mt-4 flex max-w-[1280px] gap-2">
+            <button type="button" onClick={() => openAppointment()} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white"><CalendarDays className="size-4" aria-hidden="true" /> Записаться</button>
+            <a href={`https://wa.me/${CLINIC_INFO.whatsappPhone}`} target="_blank" rel="noreferrer" aria-label="Написать в WhatsApp" className="grid size-12 place-items-center rounded-xl bg-[#25D366] text-white"><MessageCircle className="size-5" aria-hidden="true" /></a>
           </div>
         </div>
       )}
     </header>
   );
-};
+}

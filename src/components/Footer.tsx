@@ -1,137 +1,41 @@
-import React from 'react';
-import { PageId } from '../types';
-import { CLINIC_INFO } from '../data/clinicData';
-import { Phone, MapPin, Clock, MessageSquare } from 'lucide-react';
+import { Link } from 'react-router';
+import { Clock3, MapPin, MessageCircle, Phone } from 'lucide-react';
+import { CLINIC_INFO, TWO_GIS_ROUTE_URL } from '../data/clinicData';
+import { useAppointment } from '../context/AppointmentContext';
 
-interface FooterProps {
-  onNavigate: (page: PageId) => void;
-  onOpenAppointment: () => void;
-}
-
-export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAppointment }) => {
+export function Footer() {
+  const { openAppointment } = useAppointment();
   return (
-    <footer className="bg-surface-container dark:bg-surface-container-highest border-t border-outline-variant/50 pt-16 pb-24 md:pb-16 text-on-surface">
-      <div className="max-w-container-max mx-auto px-gutter grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
-        {/* Brand Column */}
-        <div className="space-y-4">
-          <button
-            onClick={() => onNavigate('home')}
-            className="text-2xl font-bold tracking-tighter text-primary text-left"
-          >
-            DENTA
-          </button>
-          <p className="text-sm text-on-surface-variant leading-relaxed">
-            Премиальная стоматология с европейским подходом к лечению и комфорту пациентов в Алматы.
-          </p>
-          <div className="pt-2 flex items-center gap-2">
-            <button
-              onClick={onOpenAppointment}
-              className="bg-primary text-on-primary text-xs font-semibold px-4 py-2.5 rounded-lg hover:bg-primary-container transition-colors uppercase tracking-wider"
-            >
-              Записаться онлайн
-            </button>
+    <footer className="border-t border-outline-variant/50 bg-surface-container pb-24 pt-14 md:pb-10">
+      <div className="mx-auto grid max-w-[1280px] gap-10 px-5 md:grid-cols-2 md:px-6 lg:grid-cols-4">
+        <div>
+          <Link to="/" aria-label="Perfect Dental — главная"><img src="/images/brand/perfect-dental-logo.png" alt="Perfect Dental" className="h-20 w-auto object-contain" /></Link>
+          <p className="mt-3 max-w-xs text-sm leading-6 text-on-surface-variant">{CLINIC_INFO.description}</p>
+          <button type="button" onClick={() => openAppointment()} className="mt-5 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white hover:bg-primary-container">Записаться на консультацию</button>
+        </div>
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface">Навигация</h2>
+          <ul className="mt-4 space-y-3 text-sm text-on-surface-variant">
+            <li><Link to="/services" className="hover:text-primary">Услуги</Link></li><li><Link to="/doctors" className="hover:text-primary">Специалисты</Link></li><li><Link to="/equipment" className="hover:text-primary">Оборудование</Link></li><li><Link to="/results" className="hover:text-primary">Работы клиники</Link></li><li><Link to="/reviews" className="hover:text-primary">Отзывы</Link></li>
+          </ul>
+        </div>
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface">Контакты</h2>
+          <div className="mt-4 space-y-4 text-sm text-on-surface-variant">
+            <a href={TWO_GIS_ROUTE_URL} target="_blank" rel="noreferrer" className="flex gap-3 hover:text-primary"><MapPin className="mt-0.5 size-4 shrink-0 text-primary" />{CLINIC_INFO.address}</a>
+            <a href={`tel:${CLINIC_INFO.phoneHref}`} className="flex gap-3 hover:text-primary"><Phone className="size-4 shrink-0 text-primary" />{CLINIC_INFO.phone}</a>
+            <a href={`https://wa.me/${CLINIC_INFO.whatsappPhone}`} target="_blank" rel="noreferrer" className="flex gap-3 text-[#168c43]"><MessageCircle className="size-4 shrink-0" />WhatsApp</a>
           </div>
         </div>
-
-        {/* Navigation Links */}
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface">Навигация</h4>
-          <ul className="space-y-2 text-sm text-on-surface-variant">
-            <li>
-              <button onClick={() => onNavigate('services')} className="hover:text-primary transition-colors">
-                Услуги (Сетка)
-              </button>
-            </li>
-            <li>
-              <button onClick={() => onNavigate('all-services')} className="hover:text-primary transition-colors">
-                Каталог услуг
-              </button>
-            </li>
-            <li>
-              <button onClick={() => onNavigate('doctors')} className="hover:text-primary transition-colors">
-                Наши врачи
-              </button>
-            </li>
-            <li>
-              <button onClick={() => onNavigate('price')} className="hover:text-primary transition-colors">
-                Прайс-лист
-              </button>
-            </li>
-            <li>
-              <button onClick={() => onNavigate('before-after')} className="hover:text-primary transition-colors">
-                До / После
-              </button>
-            </li>
-          </ul>
-        </div>
-
-        {/* Informational Pages */}
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface">Клиника</h4>
-          <ul className="space-y-2 text-sm text-on-surface-variant">
-            <li>
-              <button onClick={() => onNavigate('reviews')} className="hover:text-primary transition-colors">
-                Отзывы клиентов
-              </button>
-            </li>
-            <li>
-              <button onClick={() => onNavigate('certificates')} className="hover:text-primary transition-colors">
-                Сертификаты
-              </button>
-            </li>
-            <li>
-              <button onClick={() => onNavigate('promotions')} className="hover:text-primary transition-colors">
-                Акции и спецпредложения
-              </button>
-            </li>
-            <li>
-              <button onClick={() => onNavigate('contacts')} className="hover:text-primary transition-colors">
-                Контакты и адрес
-              </button>
-            </li>
-          </ul>
-        </div>
-
-        {/* Contacts Info */}
-        <div className="space-y-3 text-sm text-on-surface-variant">
-          <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface">Контакты</h4>
-          <p className="flex items-start gap-2">
-            <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-            <span>{CLINIC_INFO.address}</span>
-          </p>
-          <p className="flex items-center gap-2">
-            <Phone className="w-4 h-4 text-primary shrink-0" />
-            <a href={`tel:${CLINIC_INFO.phones[0]}`} className="hover:underline">
-              {CLINIC_INFO.phones[0]}
-            </a>
-          </p>
-          <p className="flex items-start gap-2 text-xs">
-            <Clock className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-            <span>
-              {CLINIC_INFO.workingHours.weekdays}
-              <br />
-              {CLINIC_INFO.workingHours.saturday}
-            </span>
-          </p>
-          <a
-            href={`https://wa.me/${CLINIC_INFO.whatsappPhone}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#25D366] hover:underline pt-1"
-          >
-            <MessageSquare className="w-4 h-4 fill-current" />
-            Написать в WhatsApp
-          </a>
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface">Режим работы</h2>
+          <div className="mt-4 flex gap-3 text-sm leading-7 text-on-surface-variant"><Clock3 className="mt-1.5 size-4 shrink-0 text-primary" /><p>{CLINIC_INFO.workingHours.weekdays}<br />{CLINIC_INFO.workingHours.saturday}<br />{CLINIC_INFO.workingHours.sunday}</p></div>
         </div>
       </div>
-
-      <div className="max-w-container-max mx-auto px-gutter pt-6 border-t border-outline-variant/30 text-xs text-on-surface-variant flex flex-col md:flex-row justify-between items-center gap-4">
-        <p>© 2024–2026 DENTA. Все права защищены.</p>
-        <div className="flex gap-4">
-          <span className="hover:underline cursor-pointer">Политика конфиденциальности</span>
-          <span className="hover:underline cursor-pointer">Юридическая информация</span>
-        </div>
+      <div className="mx-auto mt-10 flex max-w-[1280px] flex-col gap-3 border-t border-outline-variant/50 px-5 pt-6 text-xs text-on-surface-variant md:flex-row md:items-center md:justify-between md:px-6">
+        <p>© 2026 Perfect Dental. {CLINIC_INFO.legalName}, БИН {CLINIC_INFO.bin}.</p>
+        <div className="flex flex-wrap gap-4"><Link to="/privacy" className="hover:text-primary">Политика конфиденциальности</Link><Link to="/contacts" className="hover:text-primary">Юридическая информация</Link></div>
       </div>
     </footer>
   );
-};
+}

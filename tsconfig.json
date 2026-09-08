@@ -13,14 +13,12 @@
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",
+    "rootDirs": [".", "./.react-router/types"],
     "allowJs": true,
     "jsx": "react-jsx",
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    },
+    "paths": { "@/*": ["./src/*"] },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "include": [".react-router/types/**/*", "src/**/*", "react-router.config.ts", "vite.config.ts"]
 }
